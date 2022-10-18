@@ -1,8 +1,12 @@
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const express = require('express')
 const { MongoClient } = require("mongodb");
-let collection = null;
+const port =3000;
+// Database login address  mongodb
 const url = 'mongodb://localhost:27017';
+const urlFetch =`http://localhost:${port}/todos`;
+let collection = null;
+// Default todo
 const initialTodos = [
     {
         id: 1,
@@ -17,12 +21,15 @@ const initialTodos = [
 ];
 (async () => {
     try {
+        // Connecting to a database
         const connection = await MongoClient.connect(url, { useNewUrlParser: true });
-        const db = connection.db('roee-todos');
+        const db = connection.db('todos-list');
      // await db.createCollection('todos');
         collection = db.collection('todos');
         const todos = await collection.find({}) .toArray();
-        if(!todos.length)         {
+        if(!todos.length)
+        {
+            // Default content
             collection.insertMany(initialTodos);
         }
 
@@ -30,52 +37,9 @@ const initialTodos = [
         console.log('e', e);
     }
 })();
-
-
 const cors = require('cors');
 
-const fs = require('fs').promises
-const fileName = "./todo.json";
 
-const store = {
-
-    async read() {
-        try {
-
-            await fs.access(fileName);
-            this.todos = JSON.parse((await fs.readFile(fileName)).toString());
-        } catch (e) {
-            this.todos = initialTodos;
-        }
-        return this.todos;
-    },
-    async save() {
-        await fs.writeFile(fileName, JSON.stringify(this.todos));
-    },
-    async getIndexById(id) {
-        try {
-            const todos = await this.read();
-            console.log(todos);
-            return todos.findIndex(todo => todo.id === +id);
-        } catch (e) {
-            console.log(e);
-        }
-    },
-    async getNextTodoId() {
-        let maxId = 1;
-        const todos = await this.read();
-
-        if (todos.length > 0) {
-            todos.forEach(todo => {
-                if (todo.id > maxId) maxId = todo.id;
-            });
-            maxId = maxId + 1;
-        }
-        return maxId;
-
-    },
-    todos: []
-}
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -83,12 +47,12 @@ app.get('/', (req, res) => {
     res.send('Hello World!')
 });
 
+//  get all todos
+
 app.get('/todos', async (req, res) => {
-    // res.json(await store.read());
-    // res.json(await store.read());
     res.send(await collection.find({}).toArray());
 });
-
+//  remove all todos
 app.get('/todos/deletes', async (req, res) => {
 
     try{
@@ -100,25 +64,12 @@ app.get('/todos/deletes', async (req, res) => {
     }
 
  });
-
+// add todos
 app.post('/todos', async (req, res) => {
 
-
-    /*const todo = req.body;
-    console.log(todo);
-    todo.id = await store.getNextTodoId();
-    store.todos.push(todo);
-    await store.save();
-    res.json('ok');*/
-
+   let  maxId =0;
    const todos = await collection.find({}).toArray();
-    let  maxId =0;
    if(todos.length){
-       /*const  { id: maxId } = await collection
-           .find({})
-           .sort({ id: -1 })
-           .next();*/
-
        const  todo = await collection
                .find({})
                .sort({ id: -1 })
@@ -135,16 +86,8 @@ app.post('/todos', async (req, res) => {
     }
 
 });
-
+// get todo by id
 app.get('/todos/:id', async (req, res) => {
-    console.log(req.params.id);
-    /* const index = await store.getIndexById(req.params.id);
-     if (index != -1) {
-
-         res.json(store.todos[index] );
-     } else {
-         res.json('no');
-     }*/
     const todo =await collection.findOne({ id: +req.params.id });
     if(todo){
         res.status(200).send(todo);
@@ -155,19 +98,9 @@ app.get('/todos/:id', async (req, res) => {
 
 
 });
+// edit todo by id
 app.put('/todos/:id', async (req, res) => {
 
-    /*const index = await store.getIndexById(req.params.id);
-    console.log(index);
-    if (index != -1) {
-        store.todos[index] = req.body;
-        store.todos[index].id = req.params.id
-        await store.save();
-        res.json('ok');
-    } else {
-        res.json('no');
-    }
-    */
     const { title, completed } = req.body;
     const update =await collection.updateOne(
         { id: +req.params.id },
@@ -179,18 +112,9 @@ app.put('/todos/:id', async (req, res) => {
         res.status(200).json('nO!');
     }
 
-
-
 });
+// remove todo by id
 app.delete('/todos/:id', async (req, res) => {
-   /* const index = await store.getIndexById(req.params.id);
-    if (index != -1) {
-        store.todos.splice(index, 1);
-        await store.save();
-        res.json('ok');
-    } else {
-        res.json('no');
-    }*/
     try {
         await collection.deleteOne({ id: +req.params.id });
         res.status(200).json('OK!');
@@ -199,14 +123,12 @@ app.delete('/todos/:id', async (req, res) => {
         }
 
 });
+// fetch todos
 app.get('/testGet', async (req, res) => {
-    console.log("testGet");
-    const fetchResp = await fetch('http://localhost:3000/todos');
+    const fetchResp = await fetch(urlFetch);
     const json = await fetchResp.json();
     res.send(json);
 });
-
-
-app.listen(3000, () => {
-    console.log('Example app listening on port 3000')
+app.listen(port, () => {
+    console.log(`Example app listening  http://localhost:${port}` )
 });
