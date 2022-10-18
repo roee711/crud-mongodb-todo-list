@@ -130,5 +130,5 @@ app.get('/testGet', async (req, res) => {
     res.send(json);
 });
 app.listen(port, () => {
-    console.log(`Example app listening  http://localhost:${port}` )
+    console.log(`listening  app   http://localhost:${port}` )
 });
